@@ -71,6 +71,10 @@
 
 static report_keyboard_t keyboard_report_sent;
 
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+static uint8_t macos_scroll_multiplier = 1;
+#endif
+
 /* Host driver */
 static void send_keyboard(report_keyboard_t *report);
 static void send_nkro(report_nkro_t *report);
@@ -266,6 +270,9 @@ void EVENT_USB_Device_Reset(void) {
     print("[R]");
     usb_device_state_set_reset();
     usb_device_state_set_protocol(USB_PROTOCOL_REPORT);
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+    macos_scroll_multiplier = 1;
+#endif
 }
 
 /** \brief Event USB Device Connect
@@ -334,6 +341,11 @@ void EVENT_USB_Device_ConfigurationChanged(void) {
 #if defined(MOUSE_ENABLE) && !defined(MOUSE_SHARED_EP)
     /* Setup mouse report endpoint */
     ConfigSuccess &= Endpoint_ConfigureEndpoint((MOUSE_IN_EPNUM | ENDPOINT_DIR_IN), EP_TYPE_INTERRUPT, MOUSE_EPSIZE, 1);
+#endif
+
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+    /* Setup macOS high resolution scroll endpoint */
+    ConfigSuccess &= Endpoint_ConfigureEndpoint((MACOS_SCROLL_IN_EPNUM | ENDPOINT_DIR_IN), EP_TYPE_INTERRUPT, MACOS_SCROLL_EPSIZE, 1);
 #endif
 
 #ifdef SHARED_EP_ENABLE
@@ -412,6 +424,14 @@ void EVENT_USB_Device_ControlRequest(void) {
                         ReportData = (uint8_t *)&keyboard_report_sent;
                         ReportSize = sizeof(keyboard_report_sent);
                         break;
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+                    case MACOS_SCROLL_INTERFACE:
+                        if ((USB_ControlRequest.wValue >> 8) == HID_REPORT_ITEM_Feature && (USB_ControlRequest.wValue & 0xFF) == REPORT_ID_MACOS_SCROLL_MULTIPLIER) {
+                            ReportData = &macos_scroll_multiplier;
+                            ReportSize = sizeof(macos_scroll_multiplier);
+                        }
+                        break;
+#endif
                 }
 
                 /* Write the report data to the control endpoint */
@@ -447,6 +467,20 @@ void EVENT_USB_Device_ControlRequest(void) {
                         Endpoint_ClearOUT();
                         Endpoint_ClearStatusStage();
                         break;
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+                    case MACOS_SCROLL_INTERFACE:
+                        if ((USB_ControlRequest.wValue >> 8) != HID_REPORT_ITEM_Feature || (USB_ControlRequest.wValue & 0xFF) != REPORT_ID_MACOS_SCROLL_MULTIPLIER || USB_ControlRequest.wLength != sizeof(macos_scroll_multiplier)) {
+                            break;
+                        }
+                        Endpoint_ClearSETUP();
+                        while (!(Endpoint_IsOUTReceived())) {
+                            if (USB_DeviceState == DEVICE_STATE_Unattached) return;
+                        }
+                        macos_scroll_multiplier = Endpoint_Read_8() != 0;
+                        Endpoint_ClearOUT();
+                        Endpoint_ClearStatusStage();
+                        break;
+#endif
                 }
             }
 
@@ -539,9 +573,15 @@ static void send_nkro(report_nkro_t *report) {
  */
 static void send_mouse(report_mouse_t *report) {
 #ifdef MOUSE_ENABLE
-    send_report(MOUSE_IN_EPNUM, report, sizeof(report_mouse_t));
+    send_report(MOUSE_IN_EPNUM, report, MOUSE_REPORT_SIZE);
 #endif
 }
+
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+void send_macos_scroll(report_macos_scroll_t *report) {
+    send_report(MACOS_SCROLL_IN_EPNUM, report, sizeof(report_macos_scroll_t));
+}
+#endif
 
 /** \brief Send Extra
  *

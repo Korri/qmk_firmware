@@ -455,16 +455,26 @@ Any pointing device with a lift/contact status can integrate inertial cursor fea
 
 ## High Resolution Scrolling
 
-| Setting                                  | Description                                                                                                               | Default       |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| `POINTING_DEVICE_HIRES_SCROLL_ENABLE`    | (Optional) Enables high resolution scrolling.                                                                             | _not defined_ |
-| `POINTING_DEVICE_HIRES_SCROLL_MULTIPLIER`| (Optional) Resolution multiplier value used by high resolution scrolling. Must be between 1 and 127, inclusive.           | `120`         |
-| `POINTING_DEVICE_HIRES_SCROLL_EXPONENT`  | (Optional) Resolution exponent value used by high resolution scrolling. Must be between 0 and 127, inclusive.             | `0`           |
+| Setting                                         | Description                                                                                                               | Default                         |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `POINTING_DEVICE_HIRES_SCROLL_ENABLE`           | (Optional) Enables high resolution scrolling.                                                                             | _not defined_                   |
+| `POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE`     | (Optional) Sends scroll input through a dedicated non-boot HID interface for macOS. Requires `POINTING_DEVICE_HIRES_SCROLL_ENABLE`. Supported on ChibiOS and LUFA. | _not defined_ |
+| `POINTING_DEVICE_HIRES_SCROLL_MULTIPLIER`       | (Optional) Resolution multiplier value used by high resolution scrolling. Must be between 1 and 127, inclusive.           | `120`, or `8` in macOS mode     |
+| `POINTING_DEVICE_HIRES_SCROLL_EXPONENT`         | (Optional) Resolution exponent value used by high resolution scrolling. Must be between 0 and 127, inclusive.             | `0`                             |
 
 The `POINTING_DEVICE_HIRES_SCROLL_ENABLE` setting enables smooth and continuous scrolling when using trackballs or high-end encoders as mouse wheels (as opposed to the typical stepped behavior of most mouse wheels).
 This works by adding a resolution multiplier to the HID descriptor for mouse wheel reports, causing the host computer to interpret each wheel tick sent by the keyboard as a fraction of a normal wheel tick.
 The resolution multiplier is set to `1 / (POINTING_DEVICE_HIRES_SCROLL_MULTIPLIER * (10 ^ POINTING_DEVICE_HIRES_SCROLL_EXPONENT))`, which is `1 / 120` by default.
 If even smoother scrolling than provided by this default value is desired, first try using `#define POINTING_DEVICE_HIRES_SCROLL_EXPONENT 1` which will result in a multiplier of `1 / 1200`.
+
+macOS does not apply the standard resolution multiplier reliably when wheel input shares a conventional mouse report with pointer movement and buttons. `POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE` keeps pointer movement and buttons in the existing mouse report, but sends vertical Wheel and horizontal AC Pan input through a dedicated non-boot HID interface with separate input and feature report IDs. The default multiplier in this mode is `8`.
+
+Enabling the macOS interface changes the USB descriptor, so reconnect the device after flashing. This mode is intended for macOS-specific firmware and consumes one additional USB interface and endpoint.
+
+```c
+#define POINTING_DEVICE_HIRES_SCROLL_ENABLE
+#define POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+```
 
 The function `pointing_device_get_hires_scroll_resolution()` can be called to get the pre-computed resolution multiplier value as a `uint16_t`.
 

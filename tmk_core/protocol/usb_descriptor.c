@@ -165,6 +165,7 @@ const USB_Descriptor_HIDReport_Datatype_t PROGMEM SharedReport[] = {
 #    endif
             HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_RELATIVE),
 
+#    ifndef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
 #    ifdef POINTING_DEVICE_HIRES_SCROLL_ENABLE
             HID_RI_COLLECTION(8, 0x02),
             // Feature report and padding (1 byte)
@@ -217,12 +218,62 @@ const USB_Descriptor_HIDReport_Datatype_t PROGMEM SharedReport[] = {
 #    ifdef POINTING_DEVICE_HIRES_SCROLL_ENABLE
             HID_RI_END_COLLECTION(0),
 #    endif
+#    endif
 
         HID_RI_END_COLLECTION(0),
     HID_RI_END_COLLECTION(0),
 #    ifndef MOUSE_SHARED_EP
 };
 #    endif
+#endif
+
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+const USB_Descriptor_HIDReport_Datatype_t PROGMEM MacOSScrollReport[] = {
+    HID_RI_USAGE_PAGE(8, 0x01), // Generic Desktop
+    HID_RI_USAGE(8, 0x02),      // Mouse
+    HID_RI_COLLECTION(8, 0x01), // Application
+        HID_RI_COLLECTION(8, 0x02), // Logical
+            // Resolution multiplier feature report
+            HID_RI_REPORT_ID(8, REPORT_ID_MACOS_SCROLL_MULTIPLIER),
+            HID_RI_USAGE_PAGE(8, 0x01), // Generic Desktop
+            HID_RI_USAGE(8, 0x48),      // Resolution Multiplier
+            HID_RI_LOGICAL_MINIMUM(8, 0),
+            HID_RI_LOGICAL_MAXIMUM(8, 1),
+            HID_RI_PHYSICAL_MINIMUM(8, 1),
+            HID_RI_PHYSICAL_MAXIMUM(8, POINTING_DEVICE_HIRES_SCROLL_MULTIPLIER),
+            HID_RI_UNIT_EXPONENT(8, POINTING_DEVICE_HIRES_SCROLL_EXPONENT),
+            HID_RI_REPORT_COUNT(8, 1),
+            HID_RI_REPORT_SIZE(8, 8),
+            HID_RI_FEATURE(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE | HID_IOF_NON_VOLATILE),
+
+            // Vertical and horizontal scroll input report
+            HID_RI_REPORT_ID(8, REPORT_ID_MACOS_SCROLL),
+            HID_RI_USAGE_PAGE(8, 0x01), // Generic Desktop
+            HID_RI_USAGE(8, 0x38),      // Wheel
+            HID_RI_LOGICAL_MINIMUM(16, MOUSE_REPORT_HV_MIN),
+            HID_RI_LOGICAL_MAXIMUM(16, MOUSE_REPORT_HV_MAX),
+            HID_RI_REPORT_COUNT(8, 1),
+#    ifdef WHEEL_EXTENDED_REPORT
+            HID_RI_REPORT_SIZE(8, 16),
+#    else
+            HID_RI_REPORT_SIZE(8, 8),
+#    endif
+            HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_RELATIVE),
+
+            HID_RI_USAGE_PAGE(8, 0x0C), // Consumer
+            HID_RI_USAGE(16, 0x0238),   // AC Pan
+            HID_RI_LOGICAL_MINIMUM(16, MOUSE_REPORT_HV_MIN),
+            HID_RI_LOGICAL_MAXIMUM(16, MOUSE_REPORT_HV_MAX),
+            HID_RI_REPORT_COUNT(8, 1),
+#    ifdef WHEEL_EXTENDED_REPORT
+            HID_RI_REPORT_SIZE(8, 16),
+#    else
+            HID_RI_REPORT_SIZE(8, 8),
+#    endif
+            HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_RELATIVE),
+        HID_RI_END_COLLECTION(0),
+    HID_RI_END_COLLECTION(0),
+};
 #endif
 
 #ifdef JOYSTICK_ENABLE
@@ -679,6 +730,46 @@ const USB_Descriptor_Configuration_t PROGMEM ConfigurationDescriptor = {
         .EndpointAddress        = (ENDPOINT_DIR_IN | MOUSE_IN_EPNUM),
         .Attributes             = (EP_TYPE_INTERRUPT | ENDPOINT_ATTR_NO_SYNC | ENDPOINT_USAGE_DATA),
         .EndpointSize           = MOUSE_EPSIZE,
+        .PollingIntervalMS      = USB_POLLING_INTERVAL_MS
+    },
+#endif
+
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+    /*
+     * macOS high resolution scroll
+     */
+    .MacOSScroll_Interface = {
+        .Header = {
+            .Size               = sizeof(USB_Descriptor_Interface_t),
+            .Type               = DTYPE_Interface
+        },
+        .InterfaceNumber        = MACOS_SCROLL_INTERFACE,
+        .AlternateSetting       = 0x00,
+        .TotalEndpoints         = 1,
+        .Class                  = HID_CSCP_HIDClass,
+        .SubClass               = HID_CSCP_NonBootSubclass,
+        .Protocol               = HID_CSCP_NonBootProtocol,
+        .InterfaceStrIndex      = NO_DESCRIPTOR
+    },
+    .MacOSScroll_HID = {
+        .Header = {
+            .Size               = sizeof(USB_HID_Descriptor_HID_t),
+            .Type               = HID_DTYPE_HID
+        },
+        .HIDSpec                = VERSION_BCD(1, 1, 1),
+        .CountryCode            = 0x00,
+        .TotalReportDescriptors = 1,
+        .HIDReportType          = HID_DTYPE_Report,
+        .HIDReportLength        = sizeof(MacOSScrollReport)
+    },
+    .MacOSScroll_INEndpoint = {
+        .Header = {
+            .Size               = sizeof(USB_Descriptor_Endpoint_t),
+            .Type               = DTYPE_Endpoint
+        },
+        .EndpointAddress        = (ENDPOINT_DIR_IN | MACOS_SCROLL_IN_EPNUM),
+        .Attributes             = (EP_TYPE_INTERRUPT | ENDPOINT_ATTR_NO_SYNC | ENDPOINT_USAGE_DATA),
+        .EndpointSize           = MACOS_SCROLL_EPSIZE,
         .PollingIntervalMS      = USB_POLLING_INTERVAL_MS
     },
 #endif
@@ -1269,6 +1360,13 @@ uint16_t get_usb_descriptor(const uint16_t wValue, const uint16_t wIndex, const 
                     break;
 #endif
 
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+                case MACOS_SCROLL_INTERFACE:
+                    Address = &ConfigurationDescriptor.MacOSScroll_HID;
+                    Size    = sizeof(USB_HID_Descriptor_HID_t);
+                    break;
+#endif
+
 #ifdef SHARED_EP_ENABLE
                 case SHARED_INTERFACE:
                     Address = &ConfigurationDescriptor.Shared_HID;
@@ -1323,6 +1421,13 @@ uint16_t get_usb_descriptor(const uint16_t wValue, const uint16_t wIndex, const 
                     Address = &MouseReport;
                     Size    = sizeof(MouseReport);
 
+                    break;
+#endif
+
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+                case MACOS_SCROLL_INTERFACE:
+                    Address = &MacOSScrollReport;
+                    Size    = sizeof(MacOSScrollReport);
                     break;
 #endif
 

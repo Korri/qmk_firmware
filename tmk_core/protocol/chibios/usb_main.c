@@ -54,6 +54,10 @@ extern keymap_config_t keymap_config;
 extern usb_endpoint_in_t  usb_endpoints_in[USB_ENDPOINT_IN_COUNT];
 extern usb_endpoint_out_t usb_endpoints_out[USB_ENDPOINT_OUT_COUNT];
 
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+static uint8_t macos_scroll_multiplier = 1;
+#endif
+
 static bool __attribute__((__unused__)) send_report_buffered(usb_endpoint_in_lut_t endpoint, void *report, size_t size);
 static void __attribute__((__unused__)) flush_report_buffered(usb_endpoint_in_lut_t endpoint, bool padded);
 static bool __attribute__((__unused__)) receive_report(usb_endpoint_out_lut_t endpoint, void *report, size_t size);
@@ -190,6 +194,9 @@ static void usb_event_cb(USBDriver *usbp, usbevent_t event) {
         case USB_EVENT_UNCONFIGURED:
             /* Falls into.*/
         case USB_EVENT_RESET:
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+            macos_scroll_multiplier = 1;
+#endif
             usb_event_queue_enqueue(event);
             chSysLockFromISR();
             for (int i = 0; i < USB_ENDPOINT_IN_COUNT; i++) {
@@ -246,6 +253,13 @@ static void set_led_transfer_cb(USBDriver *usbp) {
     }
 }
 
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+static void set_macos_scroll_multiplier_transfer_cb(USBDriver *usbp) {
+    (void)usbp;
+    macos_scroll_multiplier = set_report_buf[0] != 0;
+}
+#endif
+
 static bool usb_requests_hook_cb(USBDriver *usbp) {
     usb_control_request_t *setup = (usb_control_request_t *)usbp->setup;
 
@@ -255,6 +269,12 @@ static bool usb_requests_hook_cb(USBDriver *usbp) {
             case USB_RTYPE_DIR_DEV2HOST:
                 switch (setup->bRequest) {
                     case HID_REQ_GetReport:
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+                        if (setup->wIndex == MACOS_SCROLL_INTERFACE && setup->wValue.hbyte == HID_REPORT_ITEM_Feature && setup->wValue.lbyte == REPORT_ID_MACOS_SCROLL_MULTIPLIER) {
+                            usbSetupTransfer(usbp, &macos_scroll_multiplier, sizeof(macos_scroll_multiplier), NULL);
+                            return true;
+                        }
+#endif
                         return usb_get_report_cb(usbp);
                     case HID_REQ_GetProtocol:
                         if (setup->wIndex == KEYBOARD_INTERFACE) {
@@ -279,6 +299,14 @@ static bool usb_requests_hook_cb(USBDriver *usbp) {
 #endif
                                 usbSetupTransfer(usbp, set_report_buf, sizeof(set_report_buf), set_led_transfer_cb);
                                 return true;
+#if defined(POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE)
+                            case MACOS_SCROLL_INTERFACE:
+                                if (setup->wValue.hbyte == HID_REPORT_ITEM_Feature && setup->wValue.lbyte == REPORT_ID_MACOS_SCROLL_MULTIPLIER && setup->wLength == sizeof(macos_scroll_multiplier)) {
+                                    usbSetupTransfer(usbp, set_report_buf, sizeof(macos_scroll_multiplier), set_macos_scroll_multiplier_transfer_cb);
+                                    return true;
+                                }
+                                break;
+#endif
                         }
                         break;
                     case HID_REQ_SetProtocol:
@@ -456,9 +484,15 @@ void send_nkro(report_nkro_t *report) {
 
 void send_mouse(report_mouse_t *report) {
 #ifdef MOUSE_ENABLE
-    send_report(USB_ENDPOINT_IN_MOUSE, report, sizeof(report_mouse_t));
+    send_report(USB_ENDPOINT_IN_MOUSE, report, MOUSE_REPORT_SIZE);
 #endif
 }
+
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+void send_macos_scroll(report_macos_scroll_t *report) {
+    send_report(USB_ENDPOINT_IN_MACOS_SCROLL, report, sizeof(report_macos_scroll_t));
+}
+#endif
 
 /* ---------------------------------------------------------
  *                   Extrakey functions

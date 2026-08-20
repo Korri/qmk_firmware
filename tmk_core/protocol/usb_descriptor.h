@@ -85,6 +85,13 @@ typedef struct {
     USB_Descriptor_Endpoint_t  Mouse_INEndpoint;
 #endif
 
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+    // macOS high resolution scroll HID interface
+    USB_Descriptor_Interface_t MacOSScroll_Interface;
+    USB_HID_Descriptor_HID_t   MacOSScroll_HID;
+    USB_Descriptor_Endpoint_t  MacOSScroll_INEndpoint;
+#endif
+
 #if defined(SHARED_EP_ENABLE) && !defined(KEYBOARD_SHARED_EP)
     // Shared Interface
     USB_Descriptor_Interface_t Shared_Interface;
@@ -168,6 +175,10 @@ enum usb_interfaces {
     MOUSE_INTERFACE,
 #endif
 
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+    MACOS_SCROLL_INTERFACE,
+#endif
+
 #if defined(SHARED_EP_ENABLE) && !defined(KEYBOARD_SHARED_EP)
     SHARED_INTERFACE,
 #endif
@@ -216,6 +227,10 @@ enum usb_endpoints {
     MOUSE_IN_EPNUM = NEXT_EPNUM,
 #else
 #    define MOUSE_IN_EPNUM SHARED_IN_EPNUM
+#endif
+
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+    MACOS_SCROLL_IN_EPNUM = NEXT_EPNUM,
 #endif
 
 #ifdef RAW_ENABLE
@@ -286,6 +301,7 @@ enum usb_endpoints {
 #define KEYBOARD_EPSIZE 8
 #define SHARED_EPSIZE 32
 #define MOUSE_EPSIZE 16
+#define MACOS_SCROLL_EPSIZE 8
 #define RAW_EPSIZE 32
 #define CONSOLE_EPSIZE 32
 #define MIDI_STREAM_EPSIZE 64

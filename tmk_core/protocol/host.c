@@ -220,6 +220,21 @@ void host_mouse_send(report_mouse_t *report) {
     report->boot_x = (report->x > 127) ? 127 : ((report->x < -127) ? -127 : report->x);
     report->boot_y = (report->y > 127) ? 127 : ((report->y < -127) ? -127 : report->y);
 #endif
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+    if (driver == host_get_driver()) {
+        (*driver->send_mouse)(report);
+
+        if (report->v != 0 || report->h != 0) {
+            report_macos_scroll_t scroll_report = {
+                .report_id = REPORT_ID_MACOS_SCROLL,
+                .v         = report->v,
+                .h         = report->h,
+            };
+            send_macos_scroll(&scroll_report);
+        }
+        return;
+    }
+#endif
     (*driver->send_mouse)(report);
 }
 

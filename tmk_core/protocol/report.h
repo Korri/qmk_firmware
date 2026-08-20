@@ -44,6 +44,13 @@ enum hid_report_ids {
 
 #define IS_VALID_REPORT_ID(id) ((id) >= REPORT_ID_ALL && (id) <= REPORT_ID_COUNT)
 
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+enum macos_scroll_report_ids {
+    REPORT_ID_MACOS_SCROLL = 1,
+    REPORT_ID_MACOS_SCROLL_MULTIPLIER,
+};
+#endif
+
 /* Mouse buttons */
 #define MOUSE_BTN_MASK(n) (1 << (n))
 enum mouse_buttons {
@@ -227,6 +234,18 @@ typedef struct {
     mouse_hv_report_t v;
     mouse_hv_report_t h;
 } PACKED report_mouse_t;
+
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+#    define MOUSE_REPORT_SIZE (sizeof(report_mouse_t) - sizeof(mouse_hv_report_t) * 2)
+
+typedef struct {
+    uint8_t           report_id;
+    mouse_hv_report_t v;
+    mouse_hv_report_t h;
+} PACKED report_macos_scroll_t;
+#else
+#    define MOUSE_REPORT_SIZE sizeof(report_mouse_t)
+#endif
 
 typedef struct {
 #ifdef DIGITIZER_SHARED_EP
