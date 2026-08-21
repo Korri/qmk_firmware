@@ -484,7 +484,7 @@ void send_nkro(report_nkro_t *report) {
 
 void send_mouse(report_mouse_t *report) {
 #ifdef MOUSE_ENABLE
-    send_report(USB_ENDPOINT_IN_MOUSE, report, MOUSE_REPORT_SIZE);
+    send_report(USB_ENDPOINT_IN_MOUSE, report, sizeof(report_mouse_t));
 #endif
 }
 

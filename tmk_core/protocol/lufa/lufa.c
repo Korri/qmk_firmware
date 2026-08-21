@@ -573,7 +573,7 @@ static void send_nkro(report_nkro_t *report) {
  */
 static void send_mouse(report_mouse_t *report) {
 #ifdef MOUSE_ENABLE
-    send_report(MOUSE_IN_EPNUM, report, MOUSE_REPORT_SIZE);
+    send_report(MOUSE_IN_EPNUM, report, sizeof(report_mouse_t));
 #endif
 }
 

@@ -24,6 +24,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "debug.h"
 #include "usb_device_state.h"
 
+#ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
+#    include "os_detection.h"
+#endif
+
 #ifdef DIGITIZER_ENABLE
 #    include "digitizer.h"
 #endif
@@ -221,8 +225,12 @@ void host_mouse_send(report_mouse_t *report) {
     report->boot_y = (report->y > 127) ? 127 : ((report->y < -127) ? -127 : report->y);
 #endif
 #ifdef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
-    if (driver == host_get_driver()) {
-        (*driver->send_mouse)(report);
+    os_variant_t host_os = detected_host_os();
+    if (driver == host_get_driver() && (host_os == OS_MACOS || host_os == OS_IOS)) {
+        report_mouse_t mouse_report = *report;
+        mouse_report.v              = 0;
+        mouse_report.h              = 0;
+        (*driver->send_mouse)(&mouse_report);
 
         if (report->v != 0 || report->h != 0) {
             report_macos_scroll_t scroll_report = {

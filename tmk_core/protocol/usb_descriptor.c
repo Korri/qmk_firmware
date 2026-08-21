@@ -165,7 +165,6 @@ const USB_Descriptor_HIDReport_Datatype_t PROGMEM SharedReport[] = {
 #    endif
             HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_RELATIVE),
 
-#    ifndef POINTING_DEVICE_HIRES_SCROLL_MACOS_ENABLE
 #    ifdef POINTING_DEVICE_HIRES_SCROLL_ENABLE
             HID_RI_COLLECTION(8, 0x02),
             // Feature report and padding (1 byte)
@@ -217,7 +216,6 @@ const USB_Descriptor_HIDReport_Datatype_t PROGMEM SharedReport[] = {
 
 #    ifdef POINTING_DEVICE_HIRES_SCROLL_ENABLE
             HID_RI_END_COLLECTION(0),
-#    endif
 #    endif
 
         HID_RI_END_COLLECTION(0),
